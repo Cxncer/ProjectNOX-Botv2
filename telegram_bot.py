@@ -128,7 +128,7 @@ def main():
     application.add_handler(CommandHandler('restart', restart))
 
     # Set the webhook URL (replace YOUR_DOMAIN with your actual domain)
-    webhook_url = f"https://YOUR_DOMAIN/webhook"
+    webhook_url = f"https://noxtelegrambot.digitaloceanspaces.com/webhook"
     application.bot.set_webhook(url=webhook_url)
 
 if __name__ == '__main__':
