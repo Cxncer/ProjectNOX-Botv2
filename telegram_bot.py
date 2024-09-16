@@ -4,7 +4,8 @@ from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ConversationHandler, CallbackContext
 from telegram.error import TelegramError
-from flask import Flask
+from fastapi import FastAPI
+from pydantic import BaseModel
 
 # Load environment variables from .env file
 load_dotenv()
@@ -22,12 +23,17 @@ TARGET_CHANNEL = '@projectnox_booking'  # Replace this with your channel's usern
 # Define states for the conversation
 CLIENT_NAME, CONTACT, TYPE, DATE, TIME, PEOPLE, TOTAL_PRICE = range(7)
 
-# Initialize the Flask app
-app = Flask(__name__)
+# Initialize FastAPI app
+app = FastAPI()
 
-@app.route('/')
-def index():
-    return 'Bot is running'
+class WebhookRequest(BaseModel):
+    update_id: int
+    message: dict
+
+@app.post('/webhook')
+async def process_webhook(update: WebhookRequest):
+    await application.update_queue.put(Update.de_json(update.dict(), application.bot))
+    return "OK"
 
 # Start the conversation
 async def start(update: Update, context: CallbackContext):
@@ -97,6 +103,7 @@ async def cancel(update: Update, context: CallbackContext):
 
 def main():
     # Initialize the bot application
+    global application
     application = Application.builder().token(TOKEN).build()
 
     # Define the ConversationHandler
@@ -120,13 +127,9 @@ def main():
     application.add_handler(CommandHandler('cancel', cancel))
     application.add_handler(CommandHandler('restart', restart))
 
-    # Run the bot with polling in a separate thread
-    from threading import Thread
-    bot_thread = Thread(target=lambda: application.run_polling())
-    bot_thread.start()
-
-    # Run the Flask server
-    app.run(host='0.0.0.0', port=int(os.getenv('PORT', 10000)))
+    # Set the webhook URL (replace YOUR_DOMAIN with your actual domain)
+    webhook_url = f"https://YOUR_DOMAIN/webhook"
+    application.bot.set_webhook(url=webhook_url)
 
 if __name__ == '__main__':
     main()
