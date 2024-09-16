@@ -3,3 +3,4 @@ gunicorn==23.0.0
 python-telegram-bot==21.5
 requests==2.32.3
 python-dotenv==1.0.1
+uvicorn
