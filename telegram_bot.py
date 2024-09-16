@@ -23,8 +23,8 @@ TARGET_CHANNEL = '@projectnox_booking'  # Replace this with your channel's usern
 # Define states for the conversation
 CLIENT_NAME, CONTACT, TYPE, DATE, TIME, PEOPLE, TOTAL_PRICE = range(7)
 
-# Initialize FastAPI app
 app = FastAPI()
+application = None  # This will be initialized in the main function
 
 class WebhookRequest(BaseModel):
     update_id: int
@@ -32,7 +32,8 @@ class WebhookRequest(BaseModel):
 
 @app.post('/webhook')
 async def process_webhook(update: WebhookRequest):
-    await application.update_queue.put(Update.de_json(update.dict(), application.bot))
+    if application:
+        await application.update_queue.put(Update.de_json(update.dict(), application.bot))
     return "OK"
 
 # Start the conversation
