@@ -1,11 +1,10 @@
-import os
-import requests
-from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ConversationHandler, CallbackContext
 from telegram.error import TelegramError
 from fastapi import FastAPI
 from pydantic import BaseModel
+import os
+from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
@@ -23,8 +22,8 @@ TARGET_CHANNEL = '@projectnox_booking'  # Replace this with your channel's usern
 # Define states for the conversation
 CLIENT_NAME, CONTACT, TYPE, DATE, TIME, PEOPLE, TOTAL_PRICE = range(7)
 
+# Initialize FastAPI app
 app = FastAPI()
-application = None  # This will be initialized in the main function
 
 class WebhookRequest(BaseModel):
     update_id: int
@@ -102,8 +101,7 @@ async def cancel(update: Update, context: CallbackContext):
     await update.message.reply_text("Booking cancelled.")
     return ConversationHandler.END
 
-def main():
-    # Initialize the bot application
+async def main():
     global application
     application = Application.builder().token(TOKEN).build()
 
@@ -129,8 +127,9 @@ def main():
     application.add_handler(CommandHandler('restart', restart))
 
     # Set the webhook URL (replace YOUR_DOMAIN with your actual domain)
-    webhook_url = f"https://noxtelegrambot.digitaloceanspaces.com/webhook"
-    application.bot.set_webhook(url=webhook_url)
+    webhook_url = f"https://noxtelegrambot-rdhwj.ondigitalocean.app/webhook"
+    await application.bot.set_webhook(url=webhook_url)  # Await the coroutine
 
 if __name__ == '__main__':
-    main()
+    import asyncio
+    asyncio.run(main())
