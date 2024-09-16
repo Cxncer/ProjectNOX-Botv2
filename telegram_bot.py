@@ -1,4 +1,5 @@
 import logging
+import requests
 from fastapi import FastAPI
 from pydantic import BaseModel
 from telegram import Update
@@ -119,6 +120,10 @@ async def main():
     application.add_handler(conv_handler)
     application.add_handler(CommandHandler('cancel', cancel))
     application.add_handler(CommandHandler('restart', restart))
+
+    TELEGRAM_API_URL = f"https://api.telegram.org/bot{TOKEN}/setWebhook"
+    response = requests.post(TELEGRAM_API_URL, data={"url": webhook_url})
+    print(response.json())
 
     webhook_url = f"https://noxtelegrambot-rdhwj.ondigitalocean.app/webhook"
     await application.bot.set_webhook(url=webhook_url)
