@@ -1,10 +1,15 @@
-from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ConversationHandler, CallbackContext
-from telegram.error import TelegramError
+import logging
 from fastapi import FastAPI
 from pydantic import BaseModel
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ConversationHandler, CallbackContext
 import os
 from dotenv import load_dotenv
+import asyncio
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -35,15 +40,13 @@ async def process_webhook(update: WebhookRequest):
         await application.update_queue.put(Update.de_json(update.dict(), application.bot))
     return "OK"
 
-# Start the conversation
 async def start(update: Update, context: CallbackContext):
     await update.message.reply_text("Tos Book! Please enter the Client Name:")
     return CLIENT_NAME
 
-# Restart the conversation
 async def restart(update: Update, context: CallbackContext):
     await update.message.reply_text("Restarting the booking process. Please enter the Client Name:")
-    return CLIENT_NAME  # Restart from the first step
+    return CLIENT_NAME
 
 async def client_name(update: Update, context: CallbackContext):
     context.user_data['client_name'] = update.message.text
@@ -77,8 +80,7 @@ async def people(update: Update, context: CallbackContext):
 
 async def total_price(update: Update, context: CallbackContext):
     context.user_data['total_price'] = update.message.text
-    
-    # Summarize the data
+
     summary = (
         f"Client Name: {context.user_data['client_name']}\n"
         f"Contact: {context.user_data['contact']}\n"
@@ -89,14 +91,10 @@ async def total_price(update: Update, context: CallbackContext):
         f"Total Price: {context.user_data['total_price']}"
     )
 
-    # Send the summary to the channel
     await context.bot.send_message(chat_id=TARGET_CHANNEL, text=summary)
-    
     await update.message.reply_text("Booking created successfully!")
-
     return ConversationHandler.END
 
-# Cancel the conversation
 async def cancel(update: Update, context: CallbackContext):
     await update.message.reply_text("Booking cancelled.")
     return ConversationHandler.END
@@ -105,7 +103,6 @@ async def main():
     global application
     application = Application.builder().token(TOKEN).build()
 
-    # Define the ConversationHandler
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
@@ -118,18 +115,16 @@ async def main():
             TOTAL_PRICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, total_price)],
         },
         fallbacks=[CommandHandler('cancel', cancel), CommandHandler('restart', restart)],
-        allow_reentry=True  # Allow re-entry to handle the restart command anywhere in the flow
+        allow_reentry=True
     )
 
-    # Add handlers to the application
     application.add_handler(conv_handler)
     application.add_handler(CommandHandler('cancel', cancel))
     application.add_handler(CommandHandler('restart', restart))
 
-    # Set the webhook URL (replace YOUR_DOMAIN with your actual domain)
     webhook_url = f"https://noxtelegrambot-rdhwj.ondigitalocean.app/webhook"
-    await application.bot.set_webhook(url=webhook_url)  # Await the coroutine
+    await application.bot.set_webhook(url=webhook_url)
+    logger.info(f"Webhook set to {webhook_url}")
 
 if __name__ == '__main__':
-    import asyncio
     asyncio.run(main())
