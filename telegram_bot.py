@@ -8,6 +8,7 @@ import os
 from dotenv import load_dotenv
 import asyncio
 from telegram.error import RetryAfter, TelegramError
+import time
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -100,6 +101,36 @@ async def cancel(update: Update, context: CallbackContext):
     await update.message.reply_text("Booking cancelled.")
     return ConversationHandler.END
 
+async def set_webhook_with_retry(webhook_url):
+    """Sets the webhook with exponential backoff retries."""
+    delay = 1  # Initial delay of 1 second
+    max_retries = 5  # Maximum number of retries
+
+    for attempt in range(max_retries):
+        try:
+            # Set the webhook with Telegram
+            TELEGRAM_API_URL = f"https://api.telegram.org/bot{TOKEN}/setWebhook"
+            response = requests.post(TELEGRAM_API_URL, data={"url": webhook_url})
+            response.raise_for_status()
+            logger.info(f"Webhook set via Telegram API: {response.json()}")
+            return True  # Webhook successfully set
+        except RetryAfter as e:
+            logger.warning(f"Rate limit exceeded. Retrying in {e.retry_after} seconds.")
+            await asyncio.sleep(e.retry_after)  # Wait for the retry_after time specified by Telegram
+        except TelegramError as e:
+            logger.error(f"TelegramError occurred: {e}")
+            return False  # Fail if Telegram returns an error other than rate-limiting
+        except requests.RequestException as e:
+            logger.error(f"Request error: {e}. Retrying in {delay} seconds.")
+        except Exception as e:
+            logger.error(f"An error occurred: {e}. Retrying in {delay} seconds.")
+
+        await asyncio.sleep(delay)  # Exponential backoff delay
+        delay *= 2  # Double the delay with each retry
+
+    logger.error("Max retries exceeded. Failed to set the webhook.")
+    return False
+
 async def main():
     global application
     application = Application.builder().token(TOKEN).build()
@@ -126,25 +157,15 @@ async def main():
 
     # Set the webhook URL
     webhook_url = "https://noxtelegrambot-rdhwj.ondigitalocean.app/webhook"
-    
-    # Set the webhook with Telegram, with error handling
-    try:
-        TELEGRAM_API_URL = f"https://api.telegram.org/bot{TOKEN}/setWebhook"
-        response = requests.post(TELEGRAM_API_URL, data={"url": webhook_url})
-        response.raise_for_status()
-        logger.info(f"Webhook set via Telegram API: {response.json()}")
 
+    # Try to set the webhook with retries
+    success = await set_webhook_with_retry(webhook_url)
+    if success:
+        # Set the webhook in the bot application
         await application.bot.set_webhook(url=webhook_url)
         logger.info(f"Webhook set in bot application: {webhook_url}")
-
-    except RetryAfter as e:
-        logger.warning(f"Rate limit exceeded. Retrying in {e.retry_after} seconds.")
-        await asyncio.sleep(e.retry_after)
-        await application.bot.set_webhook(url=webhook_url)
-    except TelegramError as e:
-        logger.error(f"TelegramError occurred: {e}")
-    except Exception as e:
-        logger.error(f"An error occurred: {e}")
+    else:
+        logger.error("Failed to set the webhook after retries.")
 
 if __name__ == '__main__':
     asyncio.run(main())
