@@ -2,7 +2,7 @@ class Config(object):
     LOGGER = True
 
     # REQUIRED
-    API_KEY = "7471395050:AAER1rWmHNDJGaqAE67erM5gz7TJX8nT0d0"
+    API_KEY = "7471395050:AAEFhAkIoZh5vXwnWzJVwK-MLXkEmhLXEb0"
     OWNER_ID = "677568643" # If you dont know, run the bot and do /id in your private chat with it
     OWNER_USERNAME = "Noxbot"
 
