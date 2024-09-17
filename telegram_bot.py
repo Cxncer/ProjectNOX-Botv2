@@ -19,6 +19,7 @@ load_dotenv()
 
 # Get the Telegram bot token from the environment variable
 TOKEN = os.getenv('TOKEN')
+logger.info(f"TOKEN loaded: {TOKEN}")
 
 # Ensure the token is set
 if not TOKEN:
