@@ -89,7 +89,7 @@ async def main():
     global application
     application = Application.builder().token(TOKEN).build()
 
-    # Initialize the application (required for newer versions of python-telegram-bot)
+    # Initialize the application
     await application.initialize()
 
     # Conversation handler
@@ -114,6 +114,9 @@ async def main():
 
     # Start polling
     logger.info("Starting polling...")
-    await application.start()  # This only starts the bot itself (API handling)
-    await application.updater.start_polling()  # This starts the polling mechanism
-    await application.idle()  # Keep the bot running
+    await application.start()
+    await application.updater.start_polling()
+    await application.idle()
+
+if __name__ == '__main__':
+    asyncio.run(main())
