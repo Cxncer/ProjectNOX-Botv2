@@ -103,6 +103,7 @@ async def main():
     global application
     application = Application.builder().token(TOKEN).build()
 
+    # Conversation handler
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
@@ -122,11 +123,15 @@ async def main():
     application.add_handler(CommandHandler('cancel', cancel))
     application.add_handler(CommandHandler('restart', restart))
 
+    # Set the webhook URL
+    webhook_url = "https://noxtelegrambot-rdhwj.ondigitalocean.app/webhook"
+    
+    # Set the webhook with Telegram
     TELEGRAM_API_URL = f"https://api.telegram.org/bot{TOKEN}/setWebhook"
     response = requests.post(TELEGRAM_API_URL, data={"url": webhook_url})
-    print(response.json())
+    logger.info(response.json())
 
-    webhook_url = f"https://noxtelegrambot-rdhwj.ondigitalocean.app/webhook"
+    # Set webhook in the bot application
     await application.bot.set_webhook(url=webhook_url)
     logger.info(f"Webhook set to {webhook_url}")
 
