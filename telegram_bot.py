@@ -7,6 +7,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 import os
 from dotenv import load_dotenv
 import asyncio
+from telegram.error import RetryAfter, TelegramError
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -126,14 +127,24 @@ async def main():
     # Set the webhook URL
     webhook_url = "https://noxtelegrambot-rdhwj.ondigitalocean.app/webhook"
     
-    # Set the webhook with Telegram
-    TELEGRAM_API_URL = f"https://api.telegram.org/bot{TOKEN}/setWebhook"
-    response = requests.post(TELEGRAM_API_URL, data={"url": webhook_url})
-    logger.info(response.json())
+    # Set the webhook with Telegram, with error handling
+    try:
+        TELEGRAM_API_URL = f"https://api.telegram.org/bot{TOKEN}/setWebhook"
+        response = requests.post(TELEGRAM_API_URL, data={"url": webhook_url})
+        response.raise_for_status()
+        logger.info(f"Webhook set via Telegram API: {response.json()}")
 
-    # Set webhook in the bot application
-    await application.bot.set_webhook(url=webhook_url)
-    logger.info(f"Webhook set to {webhook_url}")
+        await application.bot.set_webhook(url=webhook_url)
+        logger.info(f"Webhook set in bot application: {webhook_url}")
+
+    except RetryAfter as e:
+        logger.warning(f"Rate limit exceeded. Retrying in {e.retry_after} seconds.")
+        await asyncio.sleep(e.retry_after)
+        await application.bot.set_webhook(url=webhook_url)
+    except TelegramError as e:
+        logger.error(f"TelegramError occurred: {e}")
+    except Exception as e:
+        logger.error(f"An error occurred: {e}")
 
 if __name__ == '__main__':
     asyncio.run(main())
