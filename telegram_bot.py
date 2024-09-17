@@ -110,7 +110,7 @@ async def set_webhook_with_retry(webhook_url):
     for attempt in range(max_retries):
         try:
             # Set the webhook with Telegram
-            TELEGRAM_API_URL = f"https://api.telegram.org/bot{TOKEN}/setWebhook"
+            TELEGRAM_API_URL = f"https://api.telegram.org/bot7471395050:AAEFhAkIoZh5vXwnWzJVwK-MLXkEmhLXEb0/setWebhook"
             response = requests.post(TELEGRAM_API_URL, data={"url": webhook_url})
             response.raise_for_status()
             logger.info(f"Webhook set via Telegram API: {response.json()}")
