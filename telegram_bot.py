@@ -37,7 +37,8 @@ class WebhookRequest(BaseModel):
 
 @app.post('/webhook')
 async def process_webhook(update: WebhookRequest):
-    return {"status": "received", "update_id": update.update_id}
+    await application.update_queue.put(Update.de_json(update.dict(), application.bot))
+    return "OK"
 
 async def start(update: Update, context: CallbackContext):
     await update.message.reply_text("Tos Book! Please enter the Client Name:")
