@@ -142,7 +142,7 @@ async def main():
     await application.initialize()
 
     # Set the webhook URL
-    webhook_url = "https://your_domain.com/webhook"  # Replace with your actual webhook URL
+    webhook_url = "https://128.199.148.109/webhook"  # Replace with your actual webhook URL
 
     # Attempt to set the webhook with retry mechanism
     if not await set_webhook_with_retry(webhook_url):
