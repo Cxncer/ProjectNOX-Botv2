@@ -43,13 +43,13 @@ async def process_webhook(update: WebhookRequest):
     await application.update_queue.put(Update.de_json(update.dict(), application.bot))
     return "OK"
 
-async def start(update: Update, context: CallbackContext):
-    logger.info(f"Start command received from: {update.message.chat_id}")
+async def tos(update: Update, context: CallbackContext):
+    logger.info(f"tos command received from: {update.message.chat_id}")
     await update.message.reply_text("Welcome to the Booking bot! Please enter the Client Name:")
     return CLIENT_NAME
 
 async def restart(update: Update, context: CallbackContext):
-    await update.message.reply_text("Restarting the booking process. Please enter the Client Name:")
+    await update.message.reply_text("restarting the booking process. Please enter the Client Name:")
     return CLIENT_NAME
 
 async def client_name(update: Update, context: CallbackContext):
@@ -151,7 +151,7 @@ async def main():
 
     # Conversation handler
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
+        entry_points=[CommandHandler('tos', tos)],
         states={
             CLIENT_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, client_name)],
             CONTACT: [MessageHandler(filters.TEXT & ~filters.COMMAND, contact)],
@@ -168,11 +168,11 @@ async def main():
     # Add the conversation handler to the application
     application.add_handler(conv_handler)
 
-    # Start the bot
-    await application.start()
+    # tos the bot
+    await application.tos()
 
     # Idle to keep the bot running
-    await application.updater.start_polling()
+    await application.updater.tos_polling()
 
     # Stop the application when done
     await application.stop()
