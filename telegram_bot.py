@@ -8,6 +8,7 @@ import os
 from dotenv import load_dotenv
 import asyncio
 from telegram.error import RetryAfter, TelegramError
+import time
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -140,6 +141,14 @@ async def main():
     # Initialize the application
     await application.initialize()
 
+    # Set the webhook URL
+    webhook_url = "https://your_domain.com/webhook"  # Replace with your actual webhook URL
+
+    # Attempt to set the webhook with retry mechanism
+    if not await set_webhook_with_retry(webhook_url):
+        logger.error("Failed to set the webhook after maximum retries. Exiting.")
+        return
+
     # Conversation handler
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
@@ -156,5 +165,19 @@ async def main():
         allow_reentry=True
     )
 
+    # Add the conversation handler to the application
     application.add_handler(conv_handler)
-    application
+
+    # Start the bot
+    await application.start()
+
+    # Idle to keep the bot running
+    await application.updater.start_polling()
+
+    # Stop the application when done
+    await application.stop()
+
+# Run the bot with asyncio
+if __name__ == '__main__':
+    asyncio.run(main())
+
