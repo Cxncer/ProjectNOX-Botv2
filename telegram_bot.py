@@ -177,6 +177,15 @@ async def main():
     # Stop the application when done
     await application.stop()
 
+    try:
+        # Bot API request
+        pass
+
+    except RetryAfter as e:
+        # Handle Telegram's rate-limiting by waiting the required time
+        logger.warning(f"Rate limit exceeded. Retrying in {e.retry_after} seconds.")
+        await asyncio.sleep(e.retry_after)
+
 # Run the bot with asyncio
 if __name__ == '__main__':
     asyncio.run(main())
