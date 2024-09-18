@@ -176,9 +176,6 @@ async def main():
     # Keep the bot running
     await application.updater.start_polling()
 
-    # Optionally, if you need to wait for shutdown or any other cleanup
-    await application.stop()
-
 # Run the bot with asyncio
 if __name__ == '__main__':
     asyncio.run(main())
