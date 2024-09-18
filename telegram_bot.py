@@ -1,16 +1,11 @@
 import logging
-from tracemalloc import start
-import requests
-from fastapi import FastAPI
-from pydantic import BaseModel
-from sympy import cancel
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ConversationHandler, CallbackContext
 import os
 from dotenv import load_dotenv
 import asyncio
 from telegram.error import RetryAfter, TelegramError
-import time
+import requests
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -32,18 +27,6 @@ TARGET_CHANNEL = '@projectnox_booking'  # Replace this with your channel's usern
 
 # Define states for the conversation
 CLIENT_NAME, CONTACT, TYPE, DATE, TIME, PEOPLE, TOTAL_PRICE = range(7)
-
-# Initialize FastAPI app
-app = FastAPI()
-
-class WebhookRequest(BaseModel):
-    update_id: int
-    message: dict
-
-@app.post('/webhook')
-async def process_webhook(update: WebhookRequest):
-    await application.update_queue.put(Update.de_json(update.dict(), application.bot))
-    return "OK"
 
 # Define the command handlers
 async def tos(update: Update, context: CallbackContext):
@@ -108,36 +91,6 @@ async def total_price(update: Update, context: CallbackContext):
     await update.message.reply_text("Booking created successfully!")
     return ConversationHandler.END
 
-async def set_webhook_with_retry(webhook_url):
-    """Sets the webhook with exponential backoff retries."""
-    delay = 1  # Initial delay of 1 second
-    max_retries = 5  # Maximum number of retries
-
-    for attempt in range(max_retries):
-        try:
-            # Set the webhook with Telegram
-            TELEGRAM_API_URL = f"https://api.telegram.org/bot{TOKEN}/setWebhook"
-            response = requests.post(TELEGRAM_API_URL, data={"url": webhook_url})
-            response.raise_for_status()
-            logger.info(f"Webhook set via Telegram API: {response.json()}")
-            return True  # Webhook successfully set
-        except RetryAfter as e:
-            logger.warning(f"Rate limit exceeded. Retrying in {e.retry_after} seconds.")
-            await asyncio.sleep(e.retry_after)  # Wait for the retry_after time specified by Telegram
-        except TelegramError as e:
-            logger.error(f"TelegramError occurred: {e}")
-            return False  # Fail if Telegram returns an error other than rate-limiting
-        except requests.RequestException as e:
-            logger.error(f"Request error: {e}. Retrying in {delay} seconds.")
-        except Exception as e:
-            logger.error(f"An error occurred: {e}. Retrying in {delay} seconds.")
-
-        await asyncio.sleep(delay)  # Exponential backoff delay
-        delay *= 2  # Double the delay with each retry
-
-    logger.error("Max retries exceeded. Failed to set the webhook.")
-    return False
-
 async def main():
     global application
     application = Application.builder().token(TOKEN).build()
@@ -145,15 +98,9 @@ async def main():
     # Initialize the application
     await application.initialize()
 
-    # Set the webhook URL if using webhooks
-    # webhook_url = "https://128.199.148.109/webhook"  # Replace with your actual webhook URL
-    # if not await set_webhook_with_retry(webhook_url):
-    #     logger.error("Failed to set the webhook after maximum retries. Exiting.")
-    #     return
-
     # Conversation handler
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('tos', start)],
+        entry_points=[CommandHandler('tos', tos)],
         states={
             CLIENT_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, client_name)],
             CONTACT: [MessageHandler(filters.TEXT & ~filters.COMMAND, contact)],
@@ -163,7 +110,7 @@ async def main():
             PEOPLE: [MessageHandler(filters.TEXT & ~filters.COMMAND, people)],
             TOTAL_PRICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, total_price)],
         },
-        fallbacks=[CommandHandler('bach', cancel), CommandHandler('restart', restart)],
+        fallbacks=[CommandHandler('bach', bach), CommandHandler('restart', restart)],
         allow_reentry=True
     )
 
@@ -185,4 +132,3 @@ async def main():
 # Run the bot with asyncio
 if __name__ == '__main__':
     asyncio.run(main())
-
