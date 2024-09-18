@@ -1,7 +1,9 @@
 import logging
+from tracemalloc import start
 import requests
 from fastapi import FastAPI
 from pydantic import BaseModel
+from sympy import cancel
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ConversationHandler, CallbackContext
 import os
@@ -153,7 +155,7 @@ async def main():
 
     # Conversation handler
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('tos', tos)],
+        entry_points=[CommandHandler('tos', start)],
         states={
             CLIENT_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, client_name)],
             CONTACT: [MessageHandler(filters.TEXT & ~filters.COMMAND, contact)],
@@ -163,7 +165,7 @@ async def main():
             PEOPLE: [MessageHandler(filters.TEXT & ~filters.COMMAND, people)],
             TOTAL_PRICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, total_price)],
         },
-        fallbacks=[CommandHandler('bach', bach), CommandHandler('restart', restart)],
+        fallbacks=[CommandHandler('bach', cancel), CommandHandler('restart', restart)],
         allow_reentry=True
     )
 
@@ -175,6 +177,9 @@ async def main():
 
     # Keep the bot running
     await application.updater.start_polling()
+
+    # Optionally, if you need to wait for shutdown or any other cleanup
+    await application.stop()
 
 # Run the bot with asyncio
 if __name__ == '__main__':
