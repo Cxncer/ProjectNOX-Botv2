@@ -43,15 +43,21 @@ async def process_webhook(update: WebhookRequest):
     await application.update_queue.put(Update.de_json(update.dict(), application.bot))
     return "OK"
 
+# Define the command handlers
 async def tos(update: Update, context: CallbackContext):
-    logger.info(f"tos command received from: {update.message.chat_id}")
+    logger.info(f"TOS command received from: {update.message.chat_id}")
     await update.message.reply_text("Welcome to the Booking bot! Please enter the Client Name:")
     return CLIENT_NAME
 
 async def restart(update: Update, context: CallbackContext):
-    await update.message.reply_text("restarting the booking process. Please enter the Client Name:")
+    await update.message.reply_text("Restarting the booking process. Please enter the Client Name:")
     return CLIENT_NAME
 
+async def bach(update: Update, context: CallbackContext):
+    await update.message.reply_text("Booking cancelled.")
+    return ConversationHandler.END
+
+# Define the message handlers for the conversation states
 async def client_name(update: Update, context: CallbackContext):
     logger.info(f"Client name received: {update.message.text}")
     context.user_data['client_name'] = update.message.text
@@ -98,10 +104,6 @@ async def total_price(update: Update, context: CallbackContext):
 
     await context.bot.send_message(chat_id=TARGET_CHANNEL, text=summary)
     await update.message.reply_text("Booking created successfully!")
-    return ConversationHandler.END
-
-async def cancel(update: Update, context: CallbackContext):
-    await update.message.reply_text("Booking cancelled.")
     return ConversationHandler.END
 
 async def set_webhook_with_retry(webhook_url):
@@ -161,32 +163,19 @@ async def main():
             PEOPLE: [MessageHandler(filters.TEXT & ~filters.COMMAND, people)],
             TOTAL_PRICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, total_price)],
         },
-        fallbacks=[CommandHandler('cancel', cancel), CommandHandler('restart', restart)],
+        fallbacks=[CommandHandler('bach', bach), CommandHandler('restart', restart)],
         allow_reentry=True
     )
 
     # Add the conversation handler to the application
     application.add_handler(conv_handler)
 
-    # tos the bot
-    await application.tos()
+    # Start the bot
+    await application.start()
 
     # Idle to keep the bot running
-    await application.updater.tos_polling()
-
-    # Stop the application when done
-    await application.stop()
-
-    try:
-        # Bot API request
-        pass
-
-    except RetryAfter as e:
-        # Handle Telegram's rate-limiting by waiting the required time
-        logger.warning(f"Rate limit exceeded. Retrying in {e.retry_after} seconds.")
-        await asyncio.sleep(e.retry_after)
+    await application.idle()
 
 # Run the bot with asyncio
 if __name__ == '__main__':
     asyncio.run(main())
-
