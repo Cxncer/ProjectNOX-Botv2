@@ -145,13 +145,11 @@ async def main():
     # Initialize the application
     await application.initialize()
 
-    # Set the webhook URL
-    webhook_url = "https://128.199.148.109/webhook"  # Replace with your actual webhook URL
-
-    # Attempt to set the webhook with retry mechanism
-    if not await set_webhook_with_retry(webhook_url):
-        logger.error("Failed to set the webhook after maximum retries. Exiting.")
-        return
+    # Set the webhook URL if using webhooks
+    # webhook_url = "https://128.199.148.109/webhook"  # Replace with your actual webhook URL
+    # if not await set_webhook_with_retry(webhook_url):
+    #     logger.error("Failed to set the webhook after maximum retries. Exiting.")
+    #     return
 
     # Conversation handler
     conv_handler = ConversationHandler(
@@ -176,11 +174,15 @@ async def main():
     await application.start()
 
     # Keep the bot running
-    await application.updater.start_polling()
-
-    # Optionally, if you need to wait for shutdown or any other cleanup
-    await application.stop()
+    try:
+        await application.updater.start_polling()
+    except Exception as e:
+        logger.error(f"An error occurred: {e}")
+    finally:
+        # Ensure the application is stopped when done
+        await application.stop()
 
 # Run the bot with asyncio
 if __name__ == '__main__':
     asyncio.run(main())
+
