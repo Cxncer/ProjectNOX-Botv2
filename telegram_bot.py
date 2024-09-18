@@ -173,8 +173,11 @@ async def main():
     # Start the bot
     await application.start()
 
-    # Idle to keep the bot running
-    await application.idle()
+    # Keep the bot running
+    await application.updater.start_polling()
+
+    # Optionally, if you need to wait for shutdown or any other cleanup
+    await application.stop()
 
 # Run the bot with asyncio
 if __name__ == '__main__':
