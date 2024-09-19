@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+TOKEN = os.getenv('TOKEN')
 
 # Conversation states
 CLIENT_NAME, CONTACT, SESSION_TYPE, DATE, TIME, PEOPLE, TOTAL_PRICE = range(7)
