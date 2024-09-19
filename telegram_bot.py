@@ -1,134 +1,124 @@
-import logging
-from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ConversationHandler, CallbackContext
 import os
+from telegram import Update, ReplyKeyboardMarkup
+from telegram.ext import Application, CommandHandler, MessageHandler, ConversationHandler, filters
+from telegram.ext import CallbackContext
 from dotenv import load_dotenv
-import asyncio
-from telegram.error import RetryAfter, TelegramError
-import requests
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# Load environment variables from .env file
+# Load environment variables
 load_dotenv()
 
-# Get the Telegram bot token from the environment variable
-TOKEN = os.getenv('TOKEN')
-logger.info(f"TOKEN loaded: {TOKEN}")
+TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 
-# Ensure the token is set
-if not TOKEN:
-    raise ValueError("No TOKEN found in environment variables.")
+# Conversation states
+CLIENT_NAME, CONTACT, SESSION_TYPE, DATE, TIME, PEOPLE, TOTAL_PRICE = range(7)
 
-# Channel username or chat ID to send the summary to
-TARGET_CHANNEL = '@projectnox_booking'  # Replace this with your channel's username or chat ID
-
-# Define states for the conversation
-CLIENT_NAME, CONTACT, TYPE, DATE, TIME, PEOPLE, TOTAL_PRICE = range(7)
-
-# Define the command handlers
-async def tos(update: Update, context: CallbackContext):
-    logger.info(f"TOS command received from: {update.message.chat_id}")
-    await update.message.reply_text("Welcome to the Booking bot! Please enter the Client Name:")
+# Start command
+async def start(update: Update, context: CallbackContext) -> int:
+    await update.message.reply_text(
+        "Welcome! Let's start your order. What is your name?"
+    )
     return CLIENT_NAME
 
-async def restart(update: Update, context: CallbackContext):
-    await update.message.reply_text("Restarting the booking process. Please enter the Client Name:")
-    return CLIENT_NAME
-
-async def bach(update: Update, context: CallbackContext):
-    await update.message.reply_text("Booking cancelled.")
-    return ConversationHandler.END
-
-# Define the message handlers for the conversation states
-async def client_name(update: Update, context: CallbackContext):
-    logger.info(f"Client name received: {update.message.text}")
+# Handlers for each step
+async def client_name(update: Update, context: CallbackContext) -> int:
     context.user_data['client_name'] = update.message.text
-    await update.message.reply_text("Got it! Now, please enter the Contact:")
+    await update.message.reply_text("Got it! What's your contact information?")
     return CONTACT
 
-async def contact(update: Update, context: CallbackContext):
+async def contact(update: Update, context: CallbackContext) -> int:
     context.user_data['contact'] = update.message.text
-    await update.message.reply_text("Please enter the Type:")
-    return TYPE
+    await update.message.reply_text("What type of session would you like to book?")
+    return SESSION_TYPE
 
-async def type_(update: Update, context: CallbackContext):
-    context.user_data['type'] = update.message.text
-    await update.message.reply_text("Please enter the Date (dd/mm/yyyy):")
+async def session_type(update: Update, context: CallbackContext) -> int:
+    context.user_data['session_type'] = update.message.text
+    await update.message.reply_text("Please provide the date of the session (dd/mm/yyyy).")
     return DATE
 
-async def date(update: Update, context: CallbackContext):
+async def date(update: Update, context: CallbackContext) -> int:
     context.user_data['date'] = update.message.text
-    await update.message.reply_text("Please enter the Time:")
+    await update.message.reply_text("What time would you like to book (HH:MM)?")
     return TIME
 
-async def time(update: Update, context: CallbackContext):
+async def time(update: Update, context: CallbackContext) -> int:
     context.user_data['time'] = update.message.text
-    await update.message.reply_text("Please enter the number of People:")
+    await update.message.reply_text("How many people will be attending?")
     return PEOPLE
 
-async def people(update: Update, context: CallbackContext):
-    context.user_data['people'] = update.message.text
-    await update.message.reply_text("Finally, please enter the Total Price:")
-    return TOTAL_PRICE
+async def people(update: Update, context: CallbackContext) -> int:
+    try:
+        people = int(update.message.text)
+        if people <= 0:
+            raise ValueError
+        context.user_data['people'] = people
+        await update.message.reply_text("Finally, what's the total price for the session?")
+        return TOTAL_PRICE
+    except ValueError:
+        await update.message.reply_text("Please enter a valid number of people.")
+        return PEOPLE
 
-async def total_price(update: Update, context: CallbackContext):
-    context.user_data['total_price'] = update.message.text
+async def total_price(update: Update, context: CallbackContext) -> int:
+    try:
+        price = float(update.message.text)
+        if price <= 0:
+            raise ValueError
+        context.user_data['total_price'] = price
+        
+        # Summary of the order
+        summary = (
+            f"Order Summary:\n"
+            f"Client Name: {context.user_data['client_name']}\n"
+            f"Contact: {context.user_data['contact']}\n"
+            f"Session Type: {context.user_data['session_type']}\n"
+            f"Date: {context.user_data['date']}\n"
+            f"Time: {context.user_data['time']}\n"
+            f"Number of People: {context.user_data['people']}\n"
+            f"Total Price: {context.user_data['total_price']}\n"
+        )
+        await update.message.reply_text(summary)
+        return ConversationHandler.END
+    except ValueError:
+        await update.message.reply_text("Please enter a valid price.")
+        return TOTAL_PRICE
 
-    summary = (
-        f"Client Name: {context.user_data['client_name']}\n"
-        f"Contact: {context.user_data['contact']}\n"
-        f"Type: {context.user_data['type']}\n"
-        f"Date: {context.user_data['date']}\n"
-        f"Time: {context.user_data['time']}\n"
-        f"People: {context.user_data['people']}\n"
-        f"Total Price: {context.user_data['total_price']}"
-    )
-
-    await context.bot.send_message(chat_id=TARGET_CHANNEL, text=summary)
-    await update.message.reply_text("Booking created successfully!")
+# Cancel the order
+async def cancel(update: Update, context: CallbackContext) -> int:
+    await update.message.reply_text("Order has been canceled. You can start a new one anytime with /start.")
     return ConversationHandler.END
 
-async def main():
-    global application
+# Restart the order
+async def restart(update: Update, context: CallbackContext) -> int:
+    await update.message.reply_text("Let's restart your order. What is your name?")
+    return CLIENT_NAME
+
+# Fallback handler for unrecognized input
+async def fallback(update: Update, context: CallbackContext) -> int:
+    await update.message.reply_text("I didn't understand that. Use /start to begin or /cancel to stop.")
+    return ConversationHandler.END
+
+def main():
     application = Application.builder().token(TOKEN).build()
 
-    # Initialize the application
-    await application.initialize()
-
-    # Conversation handler
+    # Define the conversation handler steps
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('tos', tos)],
+        entry_points=[CommandHandler('start', start)],
         states={
             CLIENT_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, client_name)],
             CONTACT: [MessageHandler(filters.TEXT & ~filters.COMMAND, contact)],
-            TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, type_)],
+            SESSION_TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, session_type)],
             DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, date)],
             TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, time)],
             PEOPLE: [MessageHandler(filters.TEXT & ~filters.COMMAND, people)],
-            TOTAL_PRICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, total_price)],
+            TOTAL_PRICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, total_price)]
         },
-        fallbacks=[CommandHandler('bach', bach), CommandHandler('restart', restart)],
-        allow_reentry=True
+        fallbacks=[CommandHandler('cancel', cancel), CommandHandler('restart', restart)]
     )
 
-    # Add the conversation handler to the application
+    # Add handlers
     application.add_handler(conv_handler)
 
-    # Start the bot
-    await application.start()
+    # Run the bot
+    application.run_polling()
 
-    # Keep the bot running
-    try:
-        await application.updater.start_polling()
-    except Exception as e:
-        logger.error(f"An error occurred: {e}")
-    finally:
-        # Ensure the application is stopped when done
-        await application.stop()
-
-# Run the bot with asyncio
 if __name__ == '__main__':
-    asyncio.run(main())
+    main()
